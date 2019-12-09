@@ -78,10 +78,63 @@ vector<int> LinuxParser::Pids() {
 }
 
 // TODO: Read and return the system memory utilization
-float LinuxParser::MemoryUtilization() { return 0.0; }
+float LinuxParser::MemoryUtilization() {
+  // MemTotal:       16126660 kB
+  // MemAvailable:   11431104 kB
+  float total = 0.0;
+  float available = 0.0;
+  bool check_total = false;
+  bool check_available = false;
+  std::ifstream stream(kProcDirectory + kMeminfoFilename);
+  if (stream.is_open()) {
+    string line;
+    while (std::getline(stream, line)) {
+      std::istringstream linestream(line);
+      while (linestream) {
+        string key, value;
+        linestream >> key >> value;
+        if (key.rfind("MemTotal", 0) == 0) {
+          // https://stackoverflow.com/a/40441240
+          float v = std::stof(value);
+          total = v;
+          available += v;
+          check_total = true;
+        }
+        if (key.rfind("MemAvailable", 0) == 0) {
+          // https://stackoverflow.com/a/40441240
+          available -= std::stof(value);
+          check_available = true;
+        }
+        if (check_total && check_available) {
+          return (available / total);
+        }
+      }
+    }
+  }
+  return 0;
+}
 
 // TODO: Read and return the system uptime
-long LinuxParser::UpTime() { return 0; }
+long LinuxParser::UpTime() {
+  // return system uptime (not process)
+  string line;
+  string uptime;
+  std::ifstream stream(kProcDirectory + kUptimeFilename);
+  if (stream.is_open()) {
+    std::getline(stream, line);
+    std::istringstream linestream(line);
+    linestream >> uptime;
+
+    // convert string to long double
+    try {
+      long value = std::stold(uptime);
+      return value;
+    } catch (...) {
+      std::cout << "error";
+    }
+  }
+  return 0;
+}
 
 // TODO: Read and return the number of jiffies for the system
 long LinuxParser::Jiffies() { return 0; }
@@ -109,7 +162,7 @@ int LinuxParser::TotalProcesses() {
       while (linestream) {
         string key, value;
         linestream >> key >> value;
-        if (key.rfind("process", 0) == 0) {
+        if (key.rfind("processes", 0) == 0) {
           // https://stackoverflow.com/a/40441240
           int i = std::stoi(value);
           return i;
@@ -117,7 +170,8 @@ int LinuxParser::TotalProcesses() {
       }
     }
   }
-  return 1; }
+  return 0;
+}
 
 // TODO: Read and return the number of running processes
 int LinuxParser::RunningProcesses() {
@@ -158,25 +212,4 @@ string LinuxParser::User(int pid[[maybe_unused]]) { return string(); }
 
 // TODO: Read and return the uptime of a process
 // REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::UpTime(int pid = 0) {
-  string line;
-  string uptime;
-  if (pid == 0) {
-    // return system uptime (not process)
-    std::ifstream stream(kProcDirectory + kUptimeFilename);
-    if (stream.is_open()) {
-      std::getline(stream, line);
-      std::istringstream linestream(line);
-      linestream >> uptime;
-
-      // convert string to long double
-      try {
-        long value = std::stold(uptime);
-        return value;
-      } catch (...) {
-        std::cout << "error";
-      }
-    }
-  }
-  return 0;
-}
+long LinuxParser::UpTime(int pid[[maybe_unused]]) { return 0;}
