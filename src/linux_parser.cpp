@@ -4,6 +4,7 @@
 #include <regex>
 #include <string>
 #include <vector>
+#include <assert.h>
 
 #include "linux_parser.h"
 
@@ -137,7 +138,9 @@ long LinuxParser::UpTime() {
 }
 
 // TODO: Read and return the number of jiffies for the system
-long LinuxParser::Jiffies() { return 0; }
+long LinuxParser::Jiffies() {
+   return 0;
+}
 
 // TODO: Read and return the number of active jiffies for a PID
 // REMOVE: [[maybe_unused]] once you define the function
@@ -150,7 +153,31 @@ long LinuxParser::ActiveJiffies() { return 0; }
 long LinuxParser::IdleJiffies() { return 0; }
 
 // TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
+vector<string> LinuxParser::CpuUtilization() {
+  // https://rosettacode.org/wiki/Linux_CPU_utilization
+  std::ifstream stream(kProcDirectory + kStatFilename);
+  vector<string> times;
+  if (stream.is_open()) {
+    // read the first line
+    string line;
+    while (std::getline(stream, line)) {
+      // https://stackoverflow.com/a/23376195
+      //     user    nice   system  idle      iowait ...
+      //cpu  74608   2520   24433   1117073   6176   ...
+      std::istringstream linestream(line);
+      string _;
+      linestream >> _; // exclude first word in line
+      while (linestream) {
+        string jiffies;
+        linestream >> jiffies;
+        times.push_back(jiffies);
+        if (times.size() == 5) { break; }
+      }
+      return times;
+    }
+  }
+  throw "Error";
+}
 
 // TODO: Read and return the total number of processes
 int LinuxParser::TotalProcesses() {

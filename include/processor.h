@@ -7,6 +7,9 @@ class Processor {
 
   // TODO: Declare any necessary private members
  private:
+   long Jiffies = 0;
+   long ActiveJiffies = 0;
+   long IdleJiffies = 0;
 };
 
 #endif
