@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <assert.h>
+#include <unistd.h>  // used for clock ticks
 
 #include "linux_parser.h"
 
@@ -147,9 +148,31 @@ long LinuxParser::Jiffies() {
    return total;
 }
 
+// Read token at position inside a string (divided by whitespace)
+string LinuxParser::readLineToken(string line, int position) {
+  // use iterators to scan the line and return the
+  // requested token at position
+  std::istringstream iss(line);
+  vector<string> results(
+     std::istream_iterator<string>{iss},
+     std::istream_iterator<string>()
+   );
+  return results[position];
+}
+
 // TODO: Read and return the number of active jiffies for a PID
-// REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; }
+long LinuxParser::ActiveJiffies(int pid) {
+  string p = std::to_string(pid);
+  std::ifstream stream(kProcDirectory + p + kStatFilename);
+  if (stream.is_open()) {
+    string line;
+    while (std::getline(stream, line)) {
+      string jiffies = readLineToken(line, 21);
+      return std::stoi(jiffies);
+    }
+  }
+  return 0;
+}
 
 // TODO: Read and return the number of active jiffies for the system
 long LinuxParser::ActiveJiffies() {
@@ -192,6 +215,28 @@ vector<string> LinuxParser::CpuUtilization() {
     }
   }
   throw "Error";
+}
+
+// Read cpu utilization of a process
+float LinuxParser::CpuUtilization(int pid) {
+  string p = std::to_string(pid);
+  std::ifstream stream(kProcDirectory + p + kStatFilename);
+  if (stream.is_open()) {
+    string line;
+    while (std::getline(stream, line)) {
+      // https://stackoverflow.com/a/16736599
+      float total_time = (std::stoi(readLineToken(line, 13))
+                        + std::stoi(readLineToken(line, 14))
+                        + std::stoi(readLineToken(line, 15))
+                        + std::stoi(readLineToken(line, 16))) / sysconf(_SC_CLK_TCK);
+
+      float elapsed_time =  LinuxParser::UpTime() -
+             (std::stoi(readLineToken(line, 21)) / sysconf(_SC_CLK_TCK));
+
+      return total_time / elapsed_time;
+    }
+  }
+  return 0;
 }
 
 // TODO: Read and return the total number of processes
@@ -270,6 +315,7 @@ string LinuxParser::Ram(int pid) {
   return "0";
 }
 
+// Read and convert RAM string to RAM integer
 int LinuxParser::RamInt(int pid) {
   return std::stoi(LinuxParser::Ram(pid));
 }
@@ -300,4 +346,6 @@ string LinuxParser::User(int pid) {
 }
 
 // TODO: Read and return the uptime of a process
-long LinuxParser::UpTime(int pid) { return 0;}
+long LinuxParser::UpTime(int pid) {
+  return LinuxParser::UpTime() - (LinuxParser::ActiveJiffies(pid) / sysconf(_SC_CLK_TCK));
+}
