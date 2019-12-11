@@ -117,8 +117,8 @@ float LinuxParser::MemoryUtilization() {
 
       }
     }
-    return -1.0;
   }
+  return -1.0;
 }
 
 // TODO: Read and return the system uptime
@@ -332,13 +332,29 @@ string LinuxParser::Uid(int pid) {
       if (!found) { continue; }
       return value;
       }
-    return "-1";
   }
+  return "-1";
 }
 
 // TODO: Read and return the user associated with a process
 string LinuxParser::User(int pid) {
-  return LinuxParser::Uid(pid);
+  string uid = LinuxParser::Uid(pid);
+  std::ifstream stream(kPasswordPath);
+  if (stream.is_open()) {
+    string line;
+    while (std::getline(stream, line)) {
+      vector<string> tokens;
+      string token;
+      std::istringstream linestream(line);
+      while (std::getline(linestream, token, ':')) {
+        tokens.push_back(token);
+      }
+      if (std::stoi(tokens[2]) == std::stoi(uid)) {
+        return tokens[0];
+      }
+    }
+  }
+  return uid;
 }
 
 // TODO: Read and return the uptime of a process
