@@ -61,6 +61,8 @@ string LinuxParser::Kernel() {
 }
 
 // BONUS: Update this to use std::filesystem
+// NOTE: to use filesystem gcc-9 is needed or lstd++fs has to
+// be linked
 vector<int> LinuxParser::Pids() {
   vector<int> pids;
   DIR* directory = opendir(kProcDirectory.c_str());
