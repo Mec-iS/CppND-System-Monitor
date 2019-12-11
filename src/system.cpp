@@ -16,10 +16,22 @@ using std::string;
 using std::vector;
 
 // TODO: Return the system's CPU
-Processor& System::Cpu() { return this->cpu_; }
+Processor& System::Cpu() {
+  this->cpu_ = Processor();
+  return this->cpu_;
+}
 
 // TODO: Return a container composed of the system's processes
-vector<Process>& System::Processes() { return this->processes_; }
+vector<Process>& System::Processes() {
+  vector<int> pids = LinuxParser::Pids();
+  vector<Process> processes;
+  for (auto p: pids) {
+    processes.push_back(Process(p));
+  }
+  std::sort(processes.rbegin(), processes.rend());
+  this->processes_ = processes;
+  return this->processes_;
+}
 
 // TODO: Return the system's kernel identifier (string)
 std::string System::Kernel() { return LinuxParser::Kernel(); }
