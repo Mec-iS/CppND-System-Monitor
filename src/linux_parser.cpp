@@ -6,6 +6,7 @@
 #include <vector>
 #include <assert.h>
 #include <unistd.h>  // used for clock ticks
+#include <tuple>
 
 #include "linux_parser.h"
 
@@ -91,29 +92,31 @@ float LinuxParser::MemoryUtilization() {
   if (stream.is_open()) {
     string line;
     while (std::getline(stream, line)) {
-      std::istringstream linestream(line);
-      while (linestream) {
-        string key, value;
-        linestream >> key >> value;
-        if (key.rfind("MemTotal", 0) == 0) {
-          // https://stackoverflow.com/a/40441240
+      {
+        auto [found, value] = readLineKeyValue(line, "MemTotal");
+        if (found) {
           float v = std::stof(value);
           total = v;
           available += v;
           check_total = true;
         }
-        if (key.rfind("MemAvailable", 0) == 0) {
-          // https://stackoverflow.com/a/40441240
+      }
+
+      {
+        auto [found, value] = readLineKeyValue(line, "MemAvailable");
+        if (found) {
           available -= std::stof(value);
           check_available = true;
         }
-        if (check_total && check_available) {
-          return (available / total);
-        }
+      }
+
+      if (check_total && check_available) {
+        return (available / total);
+
       }
     }
+    return -1.0;
   }
-  return 0;
 }
 
 // TODO: Read and return the system uptime
@@ -148,7 +151,7 @@ long LinuxParser::Jiffies() {
    return total;
 }
 
-// Read token at position inside a string (divided by whitespace)
+// Read token at position inside a string/line (divided by whitespace)
 string LinuxParser::readLineToken(string line, int position) {
   // use iterators to scan the line and return the
   // requested token at position
@@ -217,7 +220,7 @@ vector<string> LinuxParser::CpuUtilization() {
   throw "Error";
 }
 
-// Read cpu utilization of a process
+// Read cpu utilization of a process as percetage of the total usage
 float LinuxParser::CpuUtilization(int pid) {
   string p = std::to_string(pid);
   std::ifstream stream(kProcDirectory + p + kStatFilename);
@@ -239,25 +242,33 @@ float LinuxParser::CpuUtilization(int pid) {
   return 0;
 }
 
+// Read values from a Key-Value file
+std::tuple<bool,string> LinuxParser::readLineKeyValue(string line, string k) {
+  std::istringstream linestream(line);
+  while (linestream) {
+    string key, value;
+    linestream >> key >> value;
+    if (key.rfind(k, 0) == 0) {
+      // https://stackoverflow.com/a/40441240
+      return std::make_tuple(true, value);
+    }
+  }
+  return std::make_tuple(false, "Error");
+}
+
 // TODO: Read and return the total number of processes
 int LinuxParser::TotalProcesses() {
   std::ifstream stream(kProcDirectory + kStatFilename);
   if (stream.is_open()) {
     string line;
     while (std::getline(stream, line)) {
-      std::istringstream linestream(line);
-      while (linestream) {
-        string key, value;
-        linestream >> key >> value;
-        if (key.rfind("processes", 0) == 0) {
-          // https://stackoverflow.com/a/40441240
-          int i = std::stoi(value);
-          return i;
-        }
-      }
+      auto [found, value] = readLineKeyValue(line, "processes");
+      if (!found) { continue; }
+      int i = std::stoi(value);
+      return i;
     }
   }
-  return 0;
+  return -1;
 }
 
 // TODO: Read and return the number of running processes
@@ -266,19 +277,13 @@ int LinuxParser::RunningProcesses() {
   if (stream.is_open()) {
     string line;
     while (std::getline(stream, line)) {
-      std::istringstream linestream(line);
-      while (linestream) {
-        string key, value;
-        linestream >> key >> value;
-        if (key.rfind("procs_running", 0) == 0) {
-          // https://stackoverflow.com/a/40441240
-          int i = std::stoi(value);
-          return i;
-        }
-      }
+      auto [found, value] = readLineKeyValue(line, "procs_running");
+      if (!found) { continue; }
+      int i = std::stoi(value);
+      return i;
     }
   }
-  return 1;
+  return-1;
 }
 
 // TODO: Read and return the command associated with a process
@@ -301,18 +306,12 @@ string LinuxParser::Ram(int pid) {
   if (stream.is_open()) {
     string line;
     while (std::getline(stream, line)) {
-      std::istringstream linestream(line);
-      while (linestream) {
-        string key, value;
-        linestream >> key >> value;
-        if (key.rfind("VmSize", 0) == 0) {
-          // https://stackoverflow.com/a/40441240
-          return value;
-        }
+      auto [found, value] = readLineKeyValue(line, "VmSize");
+      if (!found) { continue; }
+      return value;
       }
     }
-  }
-  return "0";
+  return "-1";
 }
 
 // Read and convert RAM string to RAM integer
@@ -327,16 +326,11 @@ string LinuxParser::Uid(int pid) {
   if (stream.is_open()) {
     string line;
     while (std::getline(stream, line)) {
-      std::istringstream linestream(line);
-      while (linestream) {
-        string key, value;
-        linestream >> key >> value;
-        if (key.rfind("Uid", 0) == 0) {
-          // https://stackoverflow.com/a/40441240
-          return value;
-        }
+      auto [found, value] = readLineKeyValue(line, "Uid");
+      if (!found) { continue; }
+      return value;
       }
-    }
+    return "-1";
   }
 }
 

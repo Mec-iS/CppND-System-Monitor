@@ -4,6 +4,7 @@
 #include <fstream>
 #include <regex>
 #include <string>
+#include <tuple>
 
 namespace LinuxParser {
 // Paths
@@ -54,7 +55,8 @@ int RamInt(int pid);
 std::string Uid(int pid);
 std::string User(int pid);
 long int UpTime(int pid);
-std::string readLineToken(std::string line, int position);
+std::string readLineToken(std::string line, int position);  // read specific token from file
+std::tuple<bool,std::string> readLineKeyValue(std::string line, std::string k);  // read specific value from a key-value
 };  // namespace LinuxParser
 
 #endif
